@@ -1,0 +1,27 @@
+CREATE TABLE `trade_signals` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `symbol` VARCHAR(30) NOT NULL,
+    `base_asset` VARCHAR(20) NOT NULL,
+    `direction` ENUM('ACCUMULATION', 'DISTRIBUTION') NOT NULL,
+    `style` ENUM('SHORT', 'SWING') NOT NULL,
+    `interval` VARCHAR(8) NOT NULL,
+    `status` ENUM('ACTIVE', 'INVALIDATED') NOT NULL DEFAULT 'ACTIVE',
+    `started_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `last_confirmed_at` DATETIME(3) NOT NULL,
+    `closed_at` DATETIME(3) NULL,
+    `current_price` DECIMAL(36, 12) NOT NULL,
+    `net_flow_amount` DECIMAL(36, 12) NOT NULL,
+    `net_flow_usdt` DECIMAL(36, 8) NOT NULL,
+    `flow_ratio` DECIMAL(12, 8) NOT NULL,
+    `volume_spike_ratio` DECIMAL(12, 6) NOT NULL,
+    `total_supply` DECIMAL(36, 12) NULL,
+    `max_supply` DECIMAL(36, 12) NULL,
+    `circulating_supply` DECIMAL(36, 12) NULL,
+    `percent_of_total_supply` DECIMAL(24, 12) NULL,
+    `percent_of_max_supply` DECIMAL(24, 12) NULL,
+    `percent_of_circulating_supply` DECIMAL(24, 12) NULL,
+
+    INDEX `trade_signals_active_idx`(`direction`, `style`, `status`, `last_confirmed_at`),
+    INDEX `trade_signals_symbol_idx`(`symbol`, `style`, `status`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

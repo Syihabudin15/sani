@@ -1,0 +1,143 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique @db.VarChar(50)
+  description String?          @db.VarChar(255)
+  isSystem    Boolean          @default(false) @map("is_system")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.DateTime(3)
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique @db.VarChar(50)
+  email        String?   @unique @db.VarChar(191)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  isActive     Boolean   @default(true) @map("is_active")
+  roleId       Int       @map("role_id")
+  lastLoginAt  DateTime? @map("last_login_at") @db.DateTime(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  role         Role      @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sessions     Session[]
+
+  @@index([roleId])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique @db.VarChar(100)
+  menu        String           @db.VarChar(50)
+  action      String           @db.VarChar(20)
+  description String?          @db.VarChar(255)
+  roles       RolePermission[]
+
+  @@index([menu])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int        @map("role_id")
+  permissionId Int        @map("permission_id")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @map("token_hash") @db.Char(64)
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+enum SignalDirection {
+  ACCUMULATION
+  DISTRIBUTION
+}
+
+enum SignalStyle {
+  SHORT
+  SWING
+}
+
+enum SignalStatus {
+  ACTIVE
+  INVALIDATED
+}
+
+model TradeSignal {
+  id                   BigInt          @id @default(autoincrement())
+  symbol               String          @db.VarChar(30)
+  baseAsset            String          @map("base_asset") @db.VarChar(20)
+  direction            SignalDirection
+  style                SignalStyle
+  interval             String          @db.VarChar(8)
+  status               SignalStatus    @default(ACTIVE)
+  startedAt            DateTime        @default(now()) @map("started_at") @db.DateTime(3)
+  lastConfirmedAt      DateTime        @map("last_confirmed_at") @db.DateTime(3)
+  closedAt             DateTime?       @map("closed_at") @db.DateTime(3)
+  currentPrice         Decimal         @map("current_price") @db.Decimal(36, 12)
+  netFlowAmount        Decimal         @map("net_flow_amount") @db.Decimal(36, 12)
+  netFlowUsdt          Decimal         @map("net_flow_usdt") @db.Decimal(36, 8)
+  flowRatio            Decimal         @map("flow_ratio") @db.Decimal(12, 8)
+  volumeSpikeRatio     Decimal         @map("volume_spike_ratio") @db.Decimal(12, 6)
+  totalSupply          Decimal?        @map("total_supply") @db.Decimal(36, 12)
+  maxSupply            Decimal?        @map("max_supply") @db.Decimal(36, 12)
+  circulatingSupply    Decimal?        @map("circulating_supply") @db.Decimal(36, 12)
+  percentOfTotalSupply Decimal?        @map("percent_of_total_supply") @db.Decimal(24, 12)
+  percentOfMaxSupply   Decimal?        @map("percent_of_max_supply") @db.Decimal(24, 12)
+  percentOfCirculating Decimal?        @map("percent_of_circulating_supply") @db.Decimal(24, 12)
+
+  @@index([direction, style, status, lastConfirmedAt], map: "trade_signals_active_idx")
+  @@index([symbol, style, status], map: "trade_signals_symbol_idx")
+  @@map("trade_signals")
+}
+
+enum SmartMoneySide {
+  TAKER_BUY
+  TAKER_SELL
+}
+
+model SmartMoneyTrade {
+  id               BigInt         @id @default(autoincrement())
+  symbol           String         @db.VarChar(30)
+  aggregateTradeId BigInt         @map("aggregate_trade_id")
+  side             SmartMoneySide
+  price            Decimal        @db.Decimal(36, 12)
+  quantity         Decimal        @db.Decimal(36, 12)
+  notionalUsdt     Decimal        @map("notional_usdt") @db.Decimal(36, 8)
+  tradedAt         DateTime       @map("traded_at") @db.DateTime(3)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@unique([symbol, aggregateTradeId], map: "smart_money_symbol_trade_key")
+  @@index([tradedAt, side], map: "smart_money_recent_side_idx")
+  @@index([symbol, tradedAt], map: "smart_money_symbol_time_idx")
+  @@map("smart_money_trades")
+}
